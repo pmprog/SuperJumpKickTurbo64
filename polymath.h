@@ -28,7 +28,7 @@ void polyintro(void)
 	VIC.spr3_x = 184;
 	VIC.spr3_y = 121;
 	
-	for( idx = 0; idx < 5; idx++ )
+	for( idx = 0; idx < 5; ++idx )
 	{
 		textcolor( logofader[idx] );
 		writepolytext();
@@ -39,7 +39,7 @@ void polyintro(void)
 	
 	waitframes(100);
 	
-	for( idx = 5; idx > 0; idx-- )
+	for( idx = 5; idx > 0; --idx )
 	{
 		textcolor( logofader[idx - 1] );
 		writepolytext();

@@ -35,16 +35,15 @@ int menuscreen(void)
 {
 	int idx;
 	unsigned char menucolidx;
-	unsigned char currentoption;
 	unsigned char optionfadeidx;
+	unsigned char currentoption = 0;
 
-	VIC.spr_ena = 0x00;
-	VIC.spr_mcolor = 0x00;
+	VIC.spr_mcolor = VIC.spr_ena = 0x00;
 	clrscr();
 	
 	memcpy((void*)0x3000, menusprites, 384 );
 
-	for( idx = 0; idx < 440; idx++ )
+	for( idx = 0; idx < 440; ++idx )
 	{
 		SCREEN_MAP[40 + idx] = 0xa0; // menutitlechar[idx];
 		COLOR_RAM[40 + idx] = menutitlecolours[idx];
@@ -75,7 +74,7 @@ int menuscreen(void)
 	while( menucolidx < 4 )
 	{
 		coloursprites(menufader[menucolidx]);
-		menucolidx++;
+		++menucolidx;
 		waitframes( 4 );
 	}
 	coloursprites(menufader[menucolidx]);
@@ -88,7 +87,6 @@ int menuscreen(void)
 	textcolor( COLOR_RED );
 	printf( "64" );
 	
-	currentoption = 0;
 	while( (JOY2[0] & JOY_FIRE) != 0 )
 	{
 		gotoxy( 25, 17 );

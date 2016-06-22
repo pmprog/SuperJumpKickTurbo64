@@ -30,7 +30,7 @@ struct __spritepointers {
 void waitframes(int frames)
 {
 	unsigned char delay;
-	for( delay = 0; delay < frames; delay++ )
+	for( delay = 0; delay < frames; ++delay )
 	{
 		while( VIC.rasterline > 0 )
 		{
@@ -53,8 +53,7 @@ void setspritexy(int spritenum, int x, unsigned char y)
 
 int getspritex(int spritenum)
 {
-	int xpos;
-	xpos = VIC_MAP[spritenum * 2];
+	int xpos = VIC_MAP[spritenum * 2];
 	if( (VIC.spr_hi_x & (1 << spritenum)) != 0 )
 	{
 		xpos += 256;

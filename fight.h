@@ -5,14 +5,13 @@
 #define GAMESTATE_MATCHOUT		3
 
 #define FIGHTERSTATE_IDLE			0
-#define FIGHTERSTATE_JUMPUP		1
-#define FIGHTERSTATE_JUMPDOWN	2
-#define FIGHTERSTATE_KICK			3
-#define FIGHTERSTATE_KICKBACK	4
-#define FIGHTERSTATE_HIT			5
-#define FIGHTERSTATE_FLOORED	6
+#define FIGHTERSTATE_JUMP			1
+#define FIGHTERSTATE_KICK			2
+#define FIGHTERSTATE_KICKBACK	3
+#define FIGHTERSTATE_HIT			4
+#define FIGHTERSTATE_FLOORED	5
 
-#define FLOORY								200
+#define FLOORY								210
 
 #include "includes.h"
 
@@ -33,6 +32,14 @@ struct GameData {
 	struct Fighter Player2;
 };
 
+static char jumpdistances[25] = { 
+	5, 5, 5, 5, 4, 4, 4, 3, 3, 2, 2, 1, 0, -1, -2, -2, -3, -3, -4, -4, -4, -5, -5, -5, -5
+};
+
+static char kickbackdistances[11] = { 
+	3, 3, 2, 2, 1, 0, -1, -2, -2, -3, -3
+};
+
 void fightspriteinit()
 {
 	VIC.spr_mcolor0 = COLOR_LIGHTRED;
@@ -43,13 +50,21 @@ void fightspriteinit()
 	VIC.spr_mcolor = 0xff;
 }
 
+void fighterconfig(struct Fighter* fighter)
+{
+	fighter->state = FIGHTERSTATE_IDLE;
+	fighter->statetime = 0;
+	fighter->ypos = 0;
+	fighter->input = 0;
+}
+
 void renderfightbackground()
 {
 	int idx;
 	
 	clrscr();
 	bgcolor( COLOR_CYAN );
-	for( idx = 0; idx < 440; idx++ )
+	for( idx = 0; idx < 440; ++idx )
 	{
 		SCREEN_MAP[560 + idx] = 0xa0; // menutitlechar[idx];
 		COLOR_RAM[560 + idx] = COLOR_GREEN;
@@ -73,8 +88,7 @@ void renderfighter(struct Fighter* fighter, unsigned char startsprite, unsigned 
 				memcpy((void*)(uploadaddr + 0x40), (faceleft ? &SpriteLeftIdleB : &SpriteRightIdleB ), 64);
 			}
 			break;
-		case FIGHTERSTATE_JUMPUP:
-		case FIGHTERSTATE_JUMPDOWN:
+		case FIGHTERSTATE_JUMP:
 		case FIGHTERSTATE_KICKBACK:
 		case FIGHTERSTATE_HIT:
 			setspritexy( startsprite, fighter->xpos - 12, FLOORY - fighter->ypos - 84 );
@@ -124,47 +138,109 @@ void renderfight(struct GameData* data)
 	// TODO: Render "Wins"
 }
 
-void renderinoverlay()
+void renderinoverlay(struct GameData* data)
 {
+	// TODO: Countdown intro
+	data->GameState = GAMESTATE_FIGHT;
 }
 
 void renderoutoverlay(struct GameData* data)
 {
+	// TODO: Wins
+	
+	fighterconfig( &data->Player1 );
+	fighterconfig( &data->Player2 );
+	data->GameState = GAMESTATE_ROUNDIN;
 }
 
 void rendermatchoverlay(struct GameData* data)
 {
+	// TODO: Draw complete over
 }
 
 void cpucontrol(struct Fighter* fighter)
 {
 	// TODO: AI
+	fighter->input = 127;
 }
 
-void setfighterstatus(struct Fighter* fighter, unsigned char status)
+void setfighterstate(struct Fighter* fighter, unsigned char state)
 {
-	fighter->status = status;
-	fighter->statustime = 0;
+	fighter->state = state;
+	fighter->statetime = 0;
 }
 
 void updatefighter(struct Fighter* fighter)
 {
-	fighter->statetime++;
+	++fighter->statetime;
 
 	if( fighter->state == FIGHTERSTATE_IDLE )
 	{
 		fighter->statetime = 1;
 		if( (fighter->input & JOY_UP) == 0 )
 		{
-			setfighterstatus( fighter, FIGHTERSTATE_JUMPUP );
+			setfighterstate( fighter, FIGHTERSTATE_JUMP );
 		} else if( (fighter->input & JOY_FIRE) == 0 ) {
-			setfighterstatus( fighter, FIGHTERSTATE_KICKBACK );
+			setfighterstate( fighter, FIGHTERSTATE_KICKBACK );
 		}
-	} else if( fighter->state == FIGHTERSTATE_JUMPUP || fighter->state == FIGHTERSTATE_JUMPDOWN || fighter->state == FIGHTERSTATE_KICKBACK ) {
+	} else if( fighter->state == FIGHTERSTATE_JUMP || fighter->state == FIGHTERSTATE_KICKBACK ) {
 		if( (fighter->input & JOY_FIRE) == 0 ) {
-			setfighterstatus( fighter, FIGHTERSTATE_KICK );
+			setfighterstate( fighter, FIGHTERSTATE_KICK );
 		}
 	}
+	
+	// TODO: Move player
+	switch( fighter->state )
+	{
+		case FIGHTERSTATE_JUMP:
+			fighter->ypos += jumpdistances[fighter->statetime];
+			if( fighter->ypos == 0 )
+			{
+				setfighterstate( fighter, FIGHTERSTATE_IDLE );
+			}
+			break;
+
+		case FIGHTERSTATE_KICK:
+			if( fighter->faceleft )
+			{
+				fighter->xpos += 2;
+			} else {
+				fighter->xpos -= 2;
+			}
+			if( fighter->ypos <= 3 )
+			{
+				setfighterstate( fighter, FIGHTERSTATE_IDLE );
+			} else {
+				fighter->ypos -= 3;
+			}
+			break;
+
+		case FIGHTERSTATE_KICKBACK:
+			fighter->ypos += kickbackdistances[fighter->statetime];
+			if( fighter->faceleft )
+			{
+				++fighter->xpos;
+			} else {
+				--fighter->xpos;
+			}
+			if( fighter->ypos == 0 )
+			{
+				setfighterstate( fighter, FIGHTERSTATE_IDLE );
+			}
+			break;
+
+		case FIGHTERSTATE_HIT:
+			if( fighter->ypos > 4 )
+			{
+				fighter->ypos -= 4;
+			} else {
+				fighter->ypos = 0;
+				setfighterstate( fighter, FIGHTERSTATE_FLOORED );
+			}
+			break;
+	}
+	
+	
 }
 
 void updatefight(struct GameData* data)
@@ -188,15 +264,6 @@ void updatefight(struct GameData* data)
 	// TODO: Collision Check
 }
 
-void fighterconfig(struct Fighter* fighter)
-{
-	fighter->state = FIGHTERSTATE_IDLE;
-	fighter->statetime = 0;
-	fighter->ypos = 0;
-	fighter->wins = 0;
-	fighter->input = 0;
-}
-
 void fightstage(unsigned char P1CPU, unsigned char P2CPU)
 {
 	struct GameData data;
@@ -207,13 +274,15 @@ void fightstage(unsigned char P1CPU, unsigned char P2CPU)
 	data.GameState = GAMESTATE_ROUNDIN;
 	
 	fighterconfig( &data.Player1 );
+	data.Player1.wins = 0;
 	data.Player1.iscpu = P1CPU;
 	data.Player1.xpos = 70;
 	data.Player1.faceleft = 1;
 	
 	fighterconfig( &data.Player2 );
+	data.Player2.wins = 0;
 	data.Player2.iscpu = P2CPU;
-	data.Player2.xpos = 256;
+	data.Player2.xpos = 260;
 	data.Player2.faceleft = 0;
 	
 	while( data.GameState != GAMESTATE_MATCHOUT )
@@ -222,7 +291,7 @@ void fightstage(unsigned char P1CPU, unsigned char P2CPU)
 		switch( data.GameState )
 		{
 			case GAMESTATE_ROUNDIN:
-				renderinoverlay();
+				renderinoverlay( &data );
 				break;
 			case GAMESTATE_ROUNDOUT:
 				renderoutoverlay( &data );
