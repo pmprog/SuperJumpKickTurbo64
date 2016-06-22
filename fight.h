@@ -264,6 +264,29 @@ void updatefighter(struct Fighter* fighter)
 	
 }
 
+unsigned char iscollide(struct Fighter* kickingplayer, unsigned char kicksprite, struct Fighter* targetplayer, unsigned char targetsprite)
+{
+	unsigned char footsprite;
+	unsigned char collisionmask;
+	
+	footsprite = (kickingplayer->faceleft ? 2 : 3) + kicksprite;
+	if( (VIC.spr_coll & footsprite) == 0 )
+	{
+		return 0;
+	}
+	if( (VIC.spr_coll & (1 << targetsprite)) != 0 )
+	{
+		return 1;
+	}
+	if( targetplayer->state == FIGHTERSTATE_KICK )
+	{
+		if( (VIC.spr_coll & (1 << (targetsprite + 1))) != 0 )
+		{
+			return 1;
+		}
+	}
+}
+
 void updatefight(struct GameData* data)
 {
 	data->Player1.inputlast = data->Player1.input;
