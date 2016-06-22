@@ -36,6 +36,7 @@ int menuscreen(void)
 	int idx;
 	unsigned char menucolidx;
 	unsigned char optionfadeidx;
+	unsigned char lastjoy;
 	unsigned char currentoption = 0;
 
 	VIC.spr_mcolor = VIC.spr_ena = 0x00;
@@ -47,7 +48,7 @@ int menuscreen(void)
 	{
 		SCREEN_MAP[40 + idx] = 0xa0; // menutitlechar[idx];
 		COLOR_RAM[40 + idx] = menutitlecolours[idx];
-		waitframes( 1 );
+		// waitframes( 1 );
 	}
 	
 	VIC.spr3_x = 100;
@@ -87,6 +88,8 @@ int menuscreen(void)
 	textcolor( COLOR_RED );
 	printf( "64" );
 	
+	lastjoy = JOY2[0];
+	
 	while( (JOY2[0] & JOY_FIRE) != 0 )
 	{
 		gotoxy( 25, 17 );
@@ -101,17 +104,18 @@ int menuscreen(void)
 		textcolor( (currentoption == 2 ? selectfader[optionfadeidx] : COLOR_GRAY1) );
 		printf( "Demo" );
 		
-		if( (JOY2[0] & JOY_UP) == 0 )
+		if( (JOY2[0] & JOY_UP) == 0 && (lastjoy & JOY_UP) != 0 )
 		{
 			currentoption = (currentoption + 2) % 3;
 		}
-		if( (JOY2[0] & JOY_DOWN) == 0 )
+		if( (JOY2[0] & JOY_DOWN) == 0 && (lastjoy & JOY_DOWN) != 0 )
 		{
 			currentoption = (currentoption + 1) % 3;
 		}
+		lastjoy = JOY2[0];
 		
 		optionfadeidx = (optionfadeidx + 1) % 4;
-		waitframes( 4 );
+		// waitframes( 4 );
 	}
 	
 	VIC.spr_ena = 0x00;

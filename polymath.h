@@ -46,4 +46,5 @@ void polyintro(void)
 		coloursprites(logofader[idx]);
 		waitframes(10);
 	}
+	VIC.spr_ena = 0x00;
 }

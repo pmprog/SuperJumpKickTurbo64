@@ -11,7 +11,7 @@
 #define FIGHTERSTATE_HIT			4
 #define FIGHTERSTATE_FLOORED	5
 
-#define FLOORY								210
+#define FLOORY								240
 
 #include "includes.h"
 
@@ -20,10 +20,11 @@ struct Fighter {
 	unsigned char	state;
 	unsigned char	statetime;
 	int xpos;
-	unsigned char	ypos;
+	char	ypos;
 	unsigned char	wins;
 	unsigned char	faceleft;
 	unsigned char	input;
+	unsigned char	inputlast;
 };
 
 struct GameData {
@@ -32,12 +33,12 @@ struct GameData {
 	struct Fighter Player2;
 };
 
-static char jumpdistances[25] = { 
-	5, 5, 5, 5, 4, 4, 4, 3, 3, 2, 2, 1, 0, -1, -2, -2, -3, -3, -4, -4, -4, -5, -5, -5, -5
+static char jumpdistances[49] = { 
+	8, 7, 7, 7, 7, 6, 6, 6, 6, 5, 5, 5, 5, 4, 4, 4, 3, 3, 3, 2, 2, 2, 1, 1, 0, -1, -1, -2, -2, -2, -3, -3, -3, -4, -4, -4, -5, -5, -5, -5, -6, -6, -6, -6, -7, -7, -7, -7, -8
 };
 
-static char kickbackdistances[11] = { 
-	3, 3, 2, 2, 1, 0, -1, -2, -2, -3, -3
+static char kickbackdistances[29] = { 
+	5, 5, 5, 5, 4, 4, 4, 4, 3, 3, 2, 2, 1, 1, 0, -1, -1, -2, -2, -3, -3, -4, -4, -4, -4, -5, -5, -5, -5
 };
 
 void fightspriteinit()
@@ -56,6 +57,15 @@ void fighterconfig(struct Fighter* fighter)
 	fighter->statetime = 0;
 	fighter->ypos = 0;
 	fighter->input = 0;
+}
+
+unsigned char isbuttonpressed(unsigned char previnput, unsigned char curinput, unsigned char buttoncheck)
+{
+	if( (curinput & buttoncheck) == 0 && (previnput & buttoncheck) != 0 )
+	{
+		return 1;
+	}
+	return 0;
 }
 
 void renderfightbackground()
@@ -84,6 +94,7 @@ void renderfighter(struct Fighter* fighter, unsigned char startsprite, unsigned 
 
 			if( faceleft != fighter->faceleft || fighter->statetime == 0 )
 			{
+				fighter->faceleft = faceleft;
 				memcpy((void*)(uploadaddr), (faceleft ? &SpriteLeftIdleT : &SpriteRightIdleT ), 64);
 				memcpy((void*)(uploadaddr + 0x40), (faceleft ? &SpriteLeftIdleB : &SpriteRightIdleB ), 64);
 			}
@@ -93,10 +104,10 @@ void renderfighter(struct Fighter* fighter, unsigned char startsprite, unsigned 
 		case FIGHTERSTATE_HIT:
 			setspritexy( startsprite, fighter->xpos - 12, FLOORY - fighter->ypos - 84 );
 			setspritexy( startsprite + 1, fighter->xpos - 12, FLOORY - fighter->ypos - 42 );
-			if( faceleft != fighter->faceleft || fighter->statetime == 0 )
+			if( fighter->statetime == 0 )
 			{
-				memcpy((void*)(uploadaddr), (faceleft ? &SpriteLeftJumpT : &SpriteRightJumpT ), 64);
-				memcpy((void*)(uploadaddr + 0x40), (faceleft ? &SpriteLeftJumpB : &SpriteRightJumpB ), 64);
+				memcpy((void*)(uploadaddr), (fighter->faceleft ? &SpriteLeftJumpT : &SpriteRightJumpT ), 64);
+				memcpy((void*)(uploadaddr + 0x40), (fighter->faceleft ? &SpriteLeftJumpB : &SpriteRightJumpB ), 64);
 			}
 			break;
 		case FIGHTERSTATE_KICK:
@@ -104,26 +115,24 @@ void renderfighter(struct Fighter* fighter, unsigned char startsprite, unsigned 
 			setspritexy( startsprite + 1, fighter->xpos, FLOORY - fighter->ypos - 84 );
 			setspritexy( startsprite + 2, fighter->xpos - 24, FLOORY - fighter->ypos - 42 );
 			setspritexy( startsprite + 3, fighter->xpos, FLOORY - fighter->ypos - 42 );
-			if( faceleft != fighter->faceleft || fighter->statetime == 0 )
+			if( fighter->statetime == 0 )
 			{
-				memcpy((void*)(uploadaddr), (faceleft ? &SpriteLeftKickTL : &SpriteRightKickTL ), 64);
-				memcpy((void*)(uploadaddr + 0x40), (faceleft ? &SpriteLeftKickTR : &SpriteRightKickTR ), 64);
-				memcpy((void*)(uploadaddr + 0x80), (faceleft ? &SpriteLeftKickBL : &SpriteRightKickBL ), 64);
-				memcpy((void*)(uploadaddr + 0xC0), (faceleft ? &SpriteLeftKickBR : &SpriteRightKickBR ), 64);
+				memcpy((void*)(uploadaddr), (fighter->faceleft ? &SpriteLeftKickTL : &SpriteRightKickTL ), 64);
+				memcpy((void*)(uploadaddr + 0x40), (fighter->faceleft ? &SpriteLeftKickTR : &SpriteRightKickTR ), 64);
+				memcpy((void*)(uploadaddr + 0x80), (fighter->faceleft ? &SpriteLeftKickBL : &SpriteRightKickBL ), 64);
+				memcpy((void*)(uploadaddr + 0xC0), (fighter->faceleft ? &SpriteLeftKickBR : &SpriteRightKickBR ), 64);
 			}
 			break;
 		case FIGHTERSTATE_FLOORED:
 			setspritexy( startsprite, fighter->xpos - 24, FLOORY - 42 );
 			setspritexy( startsprite + 1, fighter->xpos, FLOORY - 42 );
-			if( faceleft != fighter->faceleft || fighter->statetime == 0 )
+			if( fighter->statetime == 0 )
 			{
-				memcpy((void*)(uploadaddr), (faceleft ? &SpriteLeftDeadL : &SpriteRightDeadL ), 64);
-				memcpy((void*)(uploadaddr + 0x40), (faceleft ? &SpriteLeftDeadR : &SpriteRightDeadR ), 64);
+				memcpy((void*)(uploadaddr), (fighter->faceleft ? &SpriteLeftDeadL : &SpriteRightDeadL ), 64);
+				memcpy((void*)(uploadaddr + 0x40), (fighter->faceleft ? &SpriteLeftDeadR : &SpriteRightDeadR ), 64);
 			}
 			break;
 	}
-	
-	fighter->faceleft = faceleft;
 }
 
 void renderfight(struct GameData* data)
@@ -161,13 +170,18 @@ void rendermatchoverlay(struct GameData* data)
 void cpucontrol(struct Fighter* fighter)
 {
 	// TODO: AI
-	fighter->input = 127;
+	fighter->input = (unsigned char)(rand() % 256);
 }
 
 void setfighterstate(struct Fighter* fighter, unsigned char state)
 {
 	fighter->state = state;
 	fighter->statetime = 0;
+	
+	if( state == FIGHTERSTATE_FLOORED || state == FIGHTERSTATE_IDLE )
+	{
+		fighter->ypos = 0;
+	}
 }
 
 void updatefighter(struct Fighter* fighter)
@@ -177,24 +191,23 @@ void updatefighter(struct Fighter* fighter)
 	if( fighter->state == FIGHTERSTATE_IDLE )
 	{
 		fighter->statetime = 1;
-		if( (fighter->input & JOY_UP) == 0 )
+		if( isbuttonpressed(fighter->inputlast, fighter->input, JOY_UP) )
 		{
 			setfighterstate( fighter, FIGHTERSTATE_JUMP );
-		} else if( (fighter->input & JOY_FIRE) == 0 ) {
+		} else if( isbuttonpressed(fighter->inputlast, fighter->input, JOY_FIRE) ) {
 			setfighterstate( fighter, FIGHTERSTATE_KICKBACK );
 		}
 	} else if( fighter->state == FIGHTERSTATE_JUMP || fighter->state == FIGHTERSTATE_KICKBACK ) {
-		if( (fighter->input & JOY_FIRE) == 0 ) {
+		if( isbuttonpressed(fighter->inputlast, fighter->input, JOY_FIRE) ) {
 			setfighterstate( fighter, FIGHTERSTATE_KICK );
 		}
 	}
 	
-	// TODO: Move player
 	switch( fighter->state )
 	{
 		case FIGHTERSTATE_JUMP:
 			fighter->ypos += jumpdistances[fighter->statetime];
-			if( fighter->ypos == 0 )
+			if( fighter->ypos <= 0 )
 			{
 				setfighterstate( fighter, FIGHTERSTATE_IDLE );
 			}
@@ -203,15 +216,15 @@ void updatefighter(struct Fighter* fighter)
 		case FIGHTERSTATE_KICK:
 			if( fighter->faceleft )
 			{
-				fighter->xpos += 2;
+				fighter->xpos -= 5;
 			} else {
-				fighter->xpos -= 2;
+				fighter->xpos += 5;
 			}
-			if( fighter->ypos <= 3 )
+			if( fighter->ypos <= 5 )
 			{
 				setfighterstate( fighter, FIGHTERSTATE_IDLE );
 			} else {
-				fighter->ypos -= 3;
+				fighter->ypos -= 5;
 			}
 			break;
 
@@ -219,11 +232,11 @@ void updatefighter(struct Fighter* fighter)
 			fighter->ypos += kickbackdistances[fighter->statetime];
 			if( fighter->faceleft )
 			{
-				++fighter->xpos;
+				fighter->xpos += 3;
 			} else {
-				--fighter->xpos;
+				fighter->xpos -= 3;
 			}
-			if( fighter->ypos == 0 )
+			if( fighter->ypos <= 0 )
 			{
 				setfighterstate( fighter, FIGHTERSTATE_IDLE );
 			}
@@ -234,17 +247,28 @@ void updatefighter(struct Fighter* fighter)
 			{
 				fighter->ypos -= 4;
 			} else {
-				fighter->ypos = 0;
 				setfighterstate( fighter, FIGHTERSTATE_FLOORED );
 			}
 			break;
 	}
 	
+	if( fighter->xpos < 24 )
+	{
+		fighter->xpos = 24;
+	}
+	
+	if( fighter->xpos > 320 )
+	{
+		fighter->xpos = 320;
+	}
 	
 }
 
 void updatefight(struct GameData* data)
 {
+	data->Player1.inputlast = data->Player1.input;
+	data->Player2.inputlast = data->Player2.input;
+
 	if( data->Player1.iscpu == 0 )
 	{
 		data->Player1.input = JOY2[0];
@@ -261,7 +285,26 @@ void updatefight(struct GameData* data)
 	}
 	updatefighter( &data->Player2 );
 	
+	
+	
 	// TODO: Collision Check
+	
+	if( data->Player1.state == FIGHTERSTATE_KICK || data->Player2.state != FIGHTERSTATE_KICK )
+	{
+	}
+	if( data->Player1.state != FIGHTERSTATE_KICK || data->Player2.state == FIGHTERSTATE_KICK )
+	{
+	}
+	if( data->Player1.state == FIGHTERSTATE_KICK && data->Player2.state == FIGHTERSTATE_KICK )
+	{
+	}
+	
+	
+	
+	if( data->Player1.state == FIGHTERSTATE_FLOORED || data->Player2.state == FIGHTERSTATE_FLOORED )
+	{
+		data->GameState = GAMESTATE_ROUNDOUT;
+	}
 }
 
 void fightstage(unsigned char P1CPU, unsigned char P2CPU)
