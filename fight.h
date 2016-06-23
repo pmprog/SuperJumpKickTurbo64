@@ -83,15 +83,14 @@ void renderfightbackground()
 
 void renderfighter(struct Fighter* fighter, unsigned char startsprite, unsigned char faceleft)
 {
-	int uploadaddr = 0x3000 + (startsprite * 0x40);
-	setspritexy( startsprite + 2, 0, 0 );
-	setspritexy( startsprite + 3, 0, 0 );
+	int uploadaddr = 0x3C00 + (startsprite * 0x40);
 	switch( fighter->state )
 	{
 		case FIGHTERSTATE_IDLE:
-			setspritexy( startsprite, fighter->xpos - 12, FLOORY - 84 );
-			setspritexy( startsprite + 1, fighter->xpos - 12, FLOORY - 42 );
-
+			setspritexy( startsprite, fighter->xpos - 24, FLOORY - 84 );
+			setspritexy( startsprite + 1, fighter->xpos - 24, FLOORY - 42 );
+			setspritexy( startsprite + 2, (startsprite * 50), 0 );
+			setspritexy( startsprite + 3, (startsprite + 1) * 50, 0 );
 			if( faceleft != fighter->faceleft || fighter->statetime == 0 )
 			{
 				fighter->faceleft = faceleft;
@@ -102,8 +101,10 @@ void renderfighter(struct Fighter* fighter, unsigned char startsprite, unsigned 
 		case FIGHTERSTATE_JUMP:
 		case FIGHTERSTATE_KICKBACK:
 		case FIGHTERSTATE_HIT:
-			setspritexy( startsprite, fighter->xpos - 12, FLOORY - fighter->ypos - 84 );
-			setspritexy( startsprite + 1, fighter->xpos - 12, FLOORY - fighter->ypos - 42 );
+			setspritexy( startsprite, fighter->xpos - 24, FLOORY - fighter->ypos - 84 );
+			setspritexy( startsprite + 1, fighter->xpos - 24, FLOORY - fighter->ypos - 42 );
+			setspritexy( startsprite + 2, (startsprite * 50), 0 );
+			setspritexy( startsprite + 3, (startsprite + 1) * 50, 0 );
 			if( fighter->statetime == 0 )
 			{
 				memcpy((void*)(uploadaddr), (fighter->faceleft ? &SpriteLeftJumpT : &SpriteRightJumpT ), 64);
@@ -111,9 +112,9 @@ void renderfighter(struct Fighter* fighter, unsigned char startsprite, unsigned 
 			}
 			break;
 		case FIGHTERSTATE_KICK:
-			setspritexy( startsprite, fighter->xpos - 24, FLOORY - fighter->ypos - 84 );
+			setspritexy( startsprite, fighter->xpos - 48, FLOORY - fighter->ypos - 84 );
 			setspritexy( startsprite + 1, fighter->xpos, FLOORY - fighter->ypos - 84 );
-			setspritexy( startsprite + 2, fighter->xpos - 24, FLOORY - fighter->ypos - 42 );
+			setspritexy( startsprite + 2, fighter->xpos - 48, FLOORY - fighter->ypos - 42 );
 			setspritexy( startsprite + 3, fighter->xpos, FLOORY - fighter->ypos - 42 );
 			if( fighter->statetime == 0 )
 			{
@@ -124,8 +125,10 @@ void renderfighter(struct Fighter* fighter, unsigned char startsprite, unsigned 
 			}
 			break;
 		case FIGHTERSTATE_FLOORED:
-			setspritexy( startsprite, fighter->xpos - 24, FLOORY - 42 );
+			setspritexy( startsprite, fighter->xpos - 48, FLOORY - 42 );
 			setspritexy( startsprite + 1, fighter->xpos, FLOORY - 42 );
+			setspritexy( startsprite + 2, (startsprite * 50), 0 );
+			setspritexy( startsprite + 3, (startsprite + 1) * 50, 0 );
 			if( fighter->statetime == 0 )
 			{
 				memcpy((void*)(uploadaddr), (fighter->faceleft ? &SpriteLeftDeadL : &SpriteRightDeadL ), 64);
@@ -156,9 +159,15 @@ void renderinoverlay(struct GameData* data)
 void renderoutoverlay(struct GameData* data)
 {
 	// TODO: Wins
+	waitframes( 100 );
+	
 	
 	fighterconfig( &data->Player1 );
+	data->Player1.xpos = 70;
+	data->Player1.faceleft = 1;
 	fighterconfig( &data->Player2 );
+	data->Player2.xpos = 260;
+	data->Player2.faceleft = 0;
 	data->GameState = GAMESTATE_ROUNDIN;
 }
 
@@ -267,20 +276,19 @@ void updatefighter(struct Fighter* fighter)
 unsigned char iscollide(struct Fighter* kickingplayer, unsigned char kicksprite, struct Fighter* targetplayer, unsigned char targetsprite)
 {
 	unsigned char footsprite;
-	unsigned char collisionmask;
 	
 	footsprite = (kickingplayer->faceleft ? 2 : 3) + kicksprite;
 	if( (VIC.spr_coll & footsprite) == 0 )
 	{
 		return 0;
 	}
-	if( (VIC.spr_coll & (1 << targetsprite)) != 0 )
+	if( (VIC.spr_coll & (3 << targetsprite)) != 0 )
 	{
 		return 1;
 	}
 	if( targetplayer->state == FIGHTERSTATE_KICK )
 	{
-		if( (VIC.spr_coll & (1 << (targetsprite + 1))) != 0 )
+		if( (VIC.spr_coll & (3 << (targetsprite + 2))) != 0 )
 		{
 			return 1;
 		}
@@ -289,6 +297,8 @@ unsigned char iscollide(struct Fighter* kickingplayer, unsigned char kicksprite,
 
 void updatefight(struct GameData* data)
 {
+	unsigned char collisions = 0;
+
 	data->Player1.inputlast = data->Player1.input;
 	data->Player2.inputlast = data->Player2.input;
 
@@ -308,21 +318,37 @@ void updatefight(struct GameData* data)
 	}
 	updatefighter( &data->Player2 );
 	
+	gotoxy(1,1);
+	printf("%d", VIC.spr_coll);
+	printf("   ");
 	
-	
-	// TODO: Collision Check
-	
-	if( data->Player1.state == FIGHTERSTATE_KICK || data->Player2.state != FIGHTERSTATE_KICK )
+	if( data->Player1.state == FIGHTERSTATE_KICK && data->Player2.state != FIGHTERSTATE_KICK )
 	{
+		if( iscollide( &data->Player1, 0, &data->Player2, 4 ) )
+		{
+			setfighterstate( &data->Player2, FIGHTERSTATE_HIT );
+		}
 	}
-	if( data->Player1.state != FIGHTERSTATE_KICK || data->Player2.state == FIGHTERSTATE_KICK )
+	if( data->Player1.state != FIGHTERSTATE_KICK && data->Player2.state == FIGHTERSTATE_KICK )
 	{
+		if( iscollide( &data->Player2, 4, &data->Player1, 0 ) )
+		{
+			setfighterstate( &data->Player1, FIGHTERSTATE_HIT );
+		}
 	}
 	if( data->Player1.state == FIGHTERSTATE_KICK && data->Player2.state == FIGHTERSTATE_KICK )
 	{
+		collisions = iscollide( &data->Player1, 0, &data->Player2, 4 ) * 2;
+		collisions += iscollide( &data->Player2, 4, &data->Player1, 0 );
+		if( collisions >= 2 )
+		{
+			setfighterstate( &data->Player2, FIGHTERSTATE_HIT );
+		}
+		if( collisions == 1 || collisions == 3 )
+		{
+			setfighterstate( &data->Player1, FIGHTERSTATE_HIT );
+		}
 	}
-	
-	
 	
 	if( data->Player1.state == FIGHTERSTATE_FLOORED || data->Player2.state == FIGHTERSTATE_FLOORED )
 	{

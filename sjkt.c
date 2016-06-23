@@ -16,14 +16,14 @@ int main(void)
 	bgcolor (COLOR_BLACK);
 	textcolor (COLOR_WHITE);
 	
-	SPRPTR.spr0 = 192;
-	SPRPTR.spr1 = 193;
-	SPRPTR.spr2 = 194;
-	SPRPTR.spr3 = 195;
-	SPRPTR.spr4 = 196;
-	SPRPTR.spr5 = 197;
-	SPRPTR.spr6 = 198;
-	SPRPTR.spr7 = 199;
+	SPRPTR.spr0 = 240; // 192;
+	SPRPTR.spr1 = 241; // 193;
+	SPRPTR.spr2 = 242; // 194;
+	SPRPTR.spr3 = 243; // 195;
+	SPRPTR.spr4 = 244;
+	SPRPTR.spr5 = 245;
+	SPRPTR.spr6 = 246;
+	SPRPTR.spr7 = 247;
 	
 	polyintro();
 	

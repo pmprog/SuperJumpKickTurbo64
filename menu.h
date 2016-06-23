@@ -42,7 +42,7 @@ int menuscreen(void)
 	VIC.spr_mcolor = VIC.spr_ena = 0x00;
 	clrscr();
 	
-	memcpy((void*)0x3000, menusprites, 384 );
+	memcpy((void*)0x3C00, menusprites, 384 );
 
 	for( idx = 0; idx < 440; ++idx )
 	{

@@ -17,7 +17,7 @@ void polyintro(void)
 {
 	unsigned char idx;
 	
-	memcpy((void*)0x3000, &SpriteLogo, 0x100);
+	memcpy((void*)0x3C00, &SpriteLogo, 0x100);
 	
 	VIC.spr0_x = 160;
 	VIC.spr0_y = 100;
@@ -43,7 +43,7 @@ void polyintro(void)
 	{
 		textcolor( logofader[idx - 1] );
 		writepolytext();
-		coloursprites(logofader[idx]);
+		coloursprites(logofader[idx - 1]);
 		waitframes(10);
 	}
 	VIC.spr_ena = 0x00;
