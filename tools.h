@@ -40,6 +40,11 @@ void waitframes(int frames)
 
 void setspritexy(int spritenum, int x, unsigned char y)
 {
+	if( x < 0 )
+	{
+		x = 0;
+	}
+
 	if( x >= 256 )
 	{
 		VIC_MAP[spritenum * 2] = (unsigned char)(x - 256);
@@ -71,4 +76,26 @@ void coloursprites(unsigned char colour)
 	VIC.spr5_color = colour;
 	VIC.spr6_color = colour;
 	VIC.spr7_color = colour;
+}
+
+unsigned char arespritesoverlapping(unsigned char spra, unsigned char sprb)
+{
+	int sax = getspritex( spra );
+	int sbx = getspritex( sprb );
+	unsigned char say = VIC_MAP[(spra * 2) + 1];
+	unsigned char sby = VIC_MAP[(sprb * 2) + 1];
+	unsigned char saw = 48;
+	unsigned char sbw = 48;
+	unsigned char sah = 42;
+	unsigned char sbh = 42;
+	
+	
+	if( sax < sbx + sbw && sax + saw >= sbx )
+	{
+		if( say < sby + sbh && say + sah >= sby )
+		{
+			return 1;
+		}
+	}
+	return 0;
 }

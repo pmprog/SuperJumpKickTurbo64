@@ -276,23 +276,15 @@ void updatefighter(struct Fighter* fighter)
 unsigned char iscollide(struct Fighter* kickingplayer, unsigned char kicksprite, struct Fighter* targetplayer, unsigned char targetsprite)
 {
 	unsigned char footsprite;
+	unsigned char result;
 	
 	footsprite = (kickingplayer->faceleft ? 2 : 3) + kicksprite;
-	if( (VIC.spr_coll & footsprite) == 0 )
-	{
-		return 0;
-	}
-	if( (VIC.spr_coll & (3 << targetsprite)) != 0 )
-	{
-		return 1;
-	}
+	result = arespritesoverlapping( footsprite, targetsprite );
 	if( targetplayer->state == FIGHTERSTATE_KICK )
 	{
-		if( (VIC.spr_coll & (3 << (targetsprite + 2))) != 0 )
-		{
-			return 1;
-		}
+		result |= arespritesoverlapping( footsprite, targetsprite + 1 );
 	}
+	return result;
 }
 
 void updatefight(struct GameData* data)
@@ -317,10 +309,6 @@ void updatefight(struct GameData* data)
 		cpucontrol( &data->Player2 );
 	}
 	updatefighter( &data->Player2 );
-	
-	gotoxy(1,1);
-	printf("%d", VIC.spr_coll);
-	printf("   ");
 	
 	if( data->Player1.state == FIGHTERSTATE_KICK && data->Player2.state != FIGHTERSTATE_KICK )
 	{
