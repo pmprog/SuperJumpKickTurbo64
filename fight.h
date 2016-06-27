@@ -12,6 +12,7 @@
 #define FIGHTERSTATE_FLOORED	5
 
 #define FLOORY								240
+#define FIGHTER_CPU_MAXDELAY	4
 
 #include "includes.h"
 
@@ -25,6 +26,7 @@ struct Fighter {
 	unsigned char	faceleft;
 	unsigned char	input;
 	unsigned char	inputlast;
+	unsigned char inputcpudelay;
 };
 
 struct GameData {
@@ -57,6 +59,8 @@ void fighterconfig(struct Fighter* fighter)
 	fighter->statetime = 0;
 	fighter->ypos = 0;
 	fighter->input = 0;
+	fighter->inputlast = 0;
+	fighter->inputcpudelay = (unsigned char)(rand() % FIGHTER_CPU_MAXDELAY) + 1;
 }
 
 unsigned char isbuttonpressed(unsigned char previnput, unsigned char curinput, unsigned char buttoncheck)
@@ -152,15 +156,22 @@ void renderfight(struct GameData* data)
 
 void renderinoverlay(struct GameData* data)
 {
-	// TODO: Countdown intro
+	unsigned char countdown = 3;
+	
+	while( countdown > 0 )
+	{
+		// TODO: Countdown intro
+		waitframes( 2 );
+		--countdown;
+	}
 	data->GameState = GAMESTATE_FIGHT;
 }
 
 void renderoutoverlay(struct GameData* data)
 {
 	// TODO: Wins
-	waitframes( 100 );
-	
+	waitframes( 10 );
+	waitframesorbutton( 90 );
 	
 	fighterconfig( &data->Player1 );
 	data->Player1.xpos = 70;
@@ -173,13 +184,47 @@ void renderoutoverlay(struct GameData* data)
 
 void rendermatchoverlay(struct GameData* data)
 {
-	// TODO: Draw complete over
+	unsigned char i;
+
+	if( data->Player1.iscpu == 0 || data->Player2.iscpu == 0 )
+	{
+		// TODO: Draw complete over
+		while( (JOY2[0] & JOY_FIRE) == JOY_FIRE && (JOY1[0] & JOY_FIRE) == JOY_FIRE )
+		{
+			// Do nothing until pressed fire
+		}
+	}
+	
+	for(i = 0; i < 8; i++ )
+	{
+		setspritexy( i, 0, 0 );
+	}
+	bgcolor( COLOR_BLUE );
+	waitframes( 3 );
+	bgcolor( COLOR_BLACK );
 }
 
 void cpucontrol(struct Fighter* fighter)
 {
-	// TODO: AI
-	fighter->input = (unsigned char)(rand() % 256);
+	
+	if( fighter->inputcpudelay == 0 )
+	{
+		fighter->input = 0xff;
+		switch( (rand() % 3) )
+		{
+			case 0:
+				fighter->input -= JOY_UP;
+				break;
+			case 1:
+				fighter->input -= JOY_FIRE;
+				break;
+			case 2:
+				break;
+		}
+		fighter->inputcpudelay = (unsigned char)(rand() % FIGHTER_CPU_MAXDELAY) + 1;
+	} else {
+		--fighter->inputcpudelay;
+	}
 }
 
 void setfighterstate(struct Fighter* fighter, unsigned char state)
@@ -187,8 +232,10 @@ void setfighterstate(struct Fighter* fighter, unsigned char state)
 	fighter->state = state;
 	fighter->statetime = 0;
 	
-	if( state == FIGHTERSTATE_FLOORED || state == FIGHTERSTATE_IDLE )
+	if( state == FIGHTERSTATE_HIT && fighter->ypos == 0 )
 	{
+		fighter->state = FIGHTERSTATE_FLOORED;
+	} else if ( state == FIGHTERSTATE_FLOORED || state == FIGHTERSTATE_IDLE ) {
 		fighter->ypos = 0;
 	}
 }
@@ -340,7 +387,20 @@ void updatefight(struct GameData* data)
 	
 	if( data->Player1.state == FIGHTERSTATE_FLOORED || data->Player2.state == FIGHTERSTATE_FLOORED )
 	{
-		data->GameState = GAMESTATE_ROUNDOUT;
+		if( (data->Player1.state == FIGHTERSTATE_FLOORED || data->Player1.state == FIGHTERSTATE_IDLE) && (data->Player2.state == FIGHTERSTATE_FLOORED || data->Player2.state == FIGHTERSTATE_IDLE) )
+		{
+			data->GameState = GAMESTATE_ROUNDOUT;
+		} else {
+			waitframes( 3 );
+		}
+	}
+	
+	if( data->Player1.iscpu && data->Player2.iscpu )
+	{
+		if( (JOY2[0] & JOY_FIRE) == 0 || (JOY1[0] & JOY_FIRE) == 0 )
+		{
+			data->GameState = GAMESTATE_MATCHOUT;
+		}
 	}
 }
 

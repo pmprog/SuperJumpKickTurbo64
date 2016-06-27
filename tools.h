@@ -38,6 +38,21 @@ void waitframes(int frames)
 	}
 }
 
+void waitframesorbutton(int frames)
+{
+	unsigned char delay;
+	for( delay = 0; delay < frames; ++delay )
+	{
+		while( VIC.rasterline > 0 )
+		{
+		}
+		if( (JOY2[0] & JOY_FIRE) == 0 || (JOY1[0] & JOY_FIRE) == 0 )
+		{
+			return;
+		}
+	}
+}
+
 void setspritexy(int spritenum, int x, unsigned char y)
 {
 	if( x < 0 )
