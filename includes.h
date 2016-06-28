@@ -14,4 +14,12 @@
 #define outb(addr,val)		(*(addr)) = (val)
 #define inb(addr)					(*(addr))
 
+struct Box
+{
+	unsigned int xpos;
+	unsigned int ypos;
+	unsigned int width;
+	unsigned int height;
+};
+
 #endif

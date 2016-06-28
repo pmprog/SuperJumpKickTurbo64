@@ -93,24 +93,34 @@ void coloursprites(unsigned char colour)
 	VIC.spr7_color = colour;
 }
 
+/*
 unsigned char arespritesoverlapping(unsigned char spra, unsigned char sprb)
 {
 	int sax = getspritex( spra );
 	int sbx = getspritex( sprb );
 	unsigned char say = VIC_MAP[(spra * 2) + 1];
 	unsigned char sby = VIC_MAP[(sprb * 2) + 1];
-	unsigned char saw = 48;
-	unsigned char sbw = 48;
-	unsigned char sah = 42;
-	unsigned char sbh = 42;
 	
-	
-	if( sax < sbx + sbw && sax + saw >= sbx )
+	if( sax < sbx + 48 && sax + 48 >= sbx )
 	{
-		if( say < sby + sbh && say + sah >= sby )
+		if( say < sby + 42 && say + 42 >= sby )
 		{
 			return 1;
 		}
 	}
 	return 0;
 }
+*/
+
+unsigned char doboxesoverlay(struct Box* boxa, struct Box* boxb)
+{
+	if( boxa->xpos < boxb->xpos + boxb->width && boxa->xpos + boxa->width >= boxb->xpos )
+	{
+		if( boxa->ypos < boxb->ypos + boxb->height && boxa->ypos + boxa->height >= boxb->ypos )
+		{
+			return 1;
+		}
+	}
+	return 0;
+}
+

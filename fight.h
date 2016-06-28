@@ -20,19 +20,15 @@ struct Fighter {
 	unsigned char	iscpu;
 	unsigned char	state;
 	unsigned char	statetime;
-	int xpos;
-	char	ypos;
+	unsigned int xpos;
+	unsigned char ypos;
 	unsigned char	wins;
 	unsigned char	faceleft;
 	unsigned char	input;
 	unsigned char	inputlast;
 	unsigned char inputcpudelay;
-};
-
-struct GameData {
-	unsigned char GameState;
-	struct Fighter Player1;
-	struct Fighter Player2;
+	struct Box collisionbox;
+	struct Box kickbox;
 };
 
 static char jumpdistances[49] = { 
@@ -41,6 +37,15 @@ static char jumpdistances[49] = {
 
 static char kickbackdistances[29] = { 
 	5, 5, 5, 5, 4, 4, 4, 4, 3, 3, 2, 2, 1, 1, 0, -1, -1, -2, -2, -3, -3, -4, -4, -4, -4, -5, -5, -5, -5
+};
+
+struct GameData {
+	unsigned char GameState;
+	struct Fighter Player1;
+	struct Fighter Player2;
+	unsigned char fader;
+	char faderdir;
+	unsigned char faderdelay;
 };
 
 void fightspriteinit()
@@ -152,6 +157,30 @@ void renderfight(struct GameData* data)
 	renderfighter( &(data->Player2), 4, 1 - p1facingleft );
 	
 	// TODO: Render "Wins"
+	textcolor(menufader[data->fader]);
+	
+	++data->faderdelay;
+	if( data->faderdelay >= 4 )
+	{
+		data->fader += data->faderdir;
+		if( data->fader == 0 || data->fader == 6 )
+		{
+			data->faderdir *= -1;
+		}
+		data->faderdelay = 0;
+	}
+
+	if( data->Player1.iscpu == 0 || data->Player2.iscpu == 0 )
+	{
+		gotoxy( 1, 1 );
+	
+	
+	} else {
+		gotoxy( 1, 1 );
+		printf( "DEMO" );
+		gotoxy( 35, 1 );
+		printf( "DEMO" );
+	}
 }
 
 void renderinoverlay(struct GameData* data)
@@ -161,15 +190,24 @@ void renderinoverlay(struct GameData* data)
 	while( countdown > 0 )
 	{
 		// TODO: Countdown intro
+		gotoxy( 10, 3);
+		printf("%d", countdown);
+		
 		waitframes( 2 );
 		--countdown;
 	}
 	data->GameState = GAMESTATE_FIGHT;
+		gotoxy( 10, 3);
+		printf("fight");
 }
 
 void renderoutoverlay(struct GameData* data)
 {
 	// TODO: Wins
+		gotoxy( 10, 3);
+		printf("reound out");
+
+
 	waitframes( 10 );
 	waitframesorbutton( 90 );
 	
@@ -177,9 +215,17 @@ void renderoutoverlay(struct GameData* data)
 	data->Player1.xpos = 70;
 	data->Player1.faceleft = 1;
 	fighterconfig( &data->Player2 );
-	data->Player2.xpos = 260;
+	data->Player2.xpos = 300;
 	data->Player2.faceleft = 0;
-	data->GameState = GAMESTATE_ROUNDIN;
+	
+	if( data->Player1.wins == 5 || data->Player2.wins == 5 )
+	{
+		data->GameState = GAMESTATE_MATCHOUT;
+	} else {
+		data->GameState = GAMESTATE_ROUNDIN;
+	}
+	
+	
 }
 
 void rendermatchoverlay(struct GameData* data)
@@ -189,6 +235,9 @@ void rendermatchoverlay(struct GameData* data)
 	if( data->Player1.iscpu == 0 || data->Player2.iscpu == 0 )
 	{
 		// TODO: Draw complete over
+		gotoxy( 10, 3);
+		printf("match out");
+
 		while( (JOY2[0] & JOY_FIRE) == JOY_FIRE && (JOY1[0] & JOY_FIRE) == JOY_FIRE )
 		{
 			// Do nothing until pressed fire
@@ -320,18 +369,43 @@ void updatefighter(struct Fighter* fighter)
 	
 }
 
-unsigned char iscollide(struct Fighter* kickingplayer, unsigned char kicksprite, struct Fighter* targetplayer, unsigned char targetsprite)
+void updatefightercollisionboxes(struct Fighter* player)
 {
-	unsigned char footsprite;
-	unsigned char result;
-	
-	footsprite = (kickingplayer->faceleft ? 2 : 3) + kicksprite;
-	result = arespritesoverlapping( footsprite, targetsprite );
-	if( targetplayer->state == FIGHTERSTATE_KICK )
+	if( player->state == FIGHTERSTATE_KICK )
 	{
-		result |= arespritesoverlapping( footsprite, targetsprite + 1 );
+		player->collisionbox.ypos = FLOORY - player->ypos - 84;
+		player->collisionbox.width = 60;
+		player->collisionbox.height = 70;
+		
+		player->kickbox.ypos = player->collisionbox.ypos + 64;
+		player->kickbox.width = 24;
+		player->kickbox.height = 14;
+
+		if( player->faceleft )
+		{
+			player->collisionbox.xpos = player->xpos;
+			player->kickbox.xpos = player->xpos - 44;
+		} else {
+			player->collisionbox.xpos = player->xpos - 48;
+			player->kickbox.xpos = player->xpos + 24;
+		}
+
+	} else {
+		player->collisionbox.xpos = player->xpos - 16;
+		player->collisionbox.ypos = FLOORY - player->ypos - 84;
+		player->collisionbox.width = 32;
+		player->collisionbox.height = 84;
+		
+		player->kickbox.xpos = 0;
+		player->kickbox.ypos = 0;
+		player->kickbox.width = 0;
+		player->kickbox.height = 0;
 	}
-	return result;
+}
+
+unsigned char iscollide(struct Fighter* kickingplayer, struct Fighter* targetplayer)
+{
+	return doboxesoverlay( &kickingplayer->kickbox, &targetplayer->collisionbox );
 }
 
 void updatefight(struct GameData* data)
@@ -357,24 +431,27 @@ void updatefight(struct GameData* data)
 	}
 	updatefighter( &data->Player2 );
 	
+	updatefightercollisionboxes( &data->Player1 );
+	updatefightercollisionboxes( &data->Player2 );
+	
 	if( data->Player1.state == FIGHTERSTATE_KICK && data->Player2.state != FIGHTERSTATE_KICK )
 	{
-		if( iscollide( &data->Player1, 0, &data->Player2, 4 ) )
+		if( iscollide( &data->Player1, &data->Player2 ) )
 		{
 			setfighterstate( &data->Player2, FIGHTERSTATE_HIT );
 		}
 	}
 	if( data->Player1.state != FIGHTERSTATE_KICK && data->Player2.state == FIGHTERSTATE_KICK )
 	{
-		if( iscollide( &data->Player2, 4, &data->Player1, 0 ) )
+		if( iscollide( &data->Player2, &data->Player1 ) )
 		{
 			setfighterstate( &data->Player1, FIGHTERSTATE_HIT );
 		}
 	}
 	if( data->Player1.state == FIGHTERSTATE_KICK && data->Player2.state == FIGHTERSTATE_KICK )
 	{
-		collisions = iscollide( &data->Player1, 0, &data->Player2, 4 ) * 2;
-		collisions += iscollide( &data->Player2, 4, &data->Player1, 0 );
+		collisions = iscollide( &data->Player1, &data->Player2 ) * 2;
+		collisions += iscollide( &data->Player2, &data->Player1 );
 		if( collisions >= 2 )
 		{
 			setfighterstate( &data->Player2, FIGHTERSTATE_HIT );
@@ -389,6 +466,17 @@ void updatefight(struct GameData* data)
 	{
 		if( (data->Player1.state == FIGHTERSTATE_FLOORED || data->Player1.state == FIGHTERSTATE_IDLE) && (data->Player2.state == FIGHTERSTATE_FLOORED || data->Player2.state == FIGHTERSTATE_IDLE) )
 		{
+			if( !data->Player1.iscpu || !data->Player2.iscpu )
+			{
+				if( data->Player1.state != FIGHTERSTATE_FLOORED )
+				{
+					++data->Player1.wins;
+				}
+				if( data->Player2.state != FIGHTERSTATE_FLOORED )
+				{
+					++data->Player2.wins;
+				}
+			}
 			data->GameState = GAMESTATE_ROUNDOUT;
 		} else {
 			waitframes( 3 );
@@ -412,6 +500,9 @@ void fightstage(unsigned char P1CPU, unsigned char P2CPU)
 	renderfightbackground();
 
 	data.GameState = GAMESTATE_ROUNDIN;
+	data.fader = 0;
+	data.faderdir = 1;
+	data.faderdelay = 0;
 	
 	fighterconfig( &data.Player1 );
 	data.Player1.wins = 0;
@@ -422,7 +513,7 @@ void fightstage(unsigned char P1CPU, unsigned char P2CPU)
 	fighterconfig( &data.Player2 );
 	data.Player2.wins = 0;
 	data.Player2.iscpu = P2CPU;
-	data.Player2.xpos = 260;
+	data.Player2.xpos = 300;
 	data.Player2.faceleft = 0;
 	
 	while( data.GameState != GAMESTATE_MATCHOUT )
