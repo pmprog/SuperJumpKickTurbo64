@@ -88,6 +88,12 @@ void renderfightbackground()
 		SCREEN_MAP[560 + idx] = 0xa0; // menutitlechar[idx];
 		COLOR_RAM[560 + idx] = COLOR_GREEN;
 	}
+	
+	textcolor(COLOR_BLACK);
+	gotoxy( 1, 1 );
+	printf( "\x12\xea\xea\xea\xea\xea\x92" );
+	gotoxy( 34, 1 );
+	printf( "\x12\xea\xea\xea\xea\xea\x92" );
 }
 
 void renderfighter(struct Fighter* fighter, unsigned char startsprite, unsigned char faceleft)
@@ -147,6 +153,17 @@ void renderfighter(struct Fighter* fighter, unsigned char startsprite, unsigned 
 	}
 }
 
+void colourwins(unsigned char wins, int base, char direction, unsigned char colour)
+{
+	unsigned char i;
+	char memoff;
+	for( i = 1; i <= wins; ++i )
+	{
+		memoff = base + (i * direction);
+		COLOR_RAM[memoff] = colour;
+	}
+}
+
 void renderfight(struct GameData* data)
 {
 	unsigned char p1facingleft;
@@ -155,9 +172,6 @@ void renderfight(struct GameData* data)
 	
 	renderfighter( &(data->Player1), 0, p1facingleft );
 	renderfighter( &(data->Player2), 4, 1 - p1facingleft );
-	
-	// TODO: Render "Wins"
-	textcolor(menufader[data->fader]);
 	
 	++data->faderdelay;
 	if( data->faderdelay >= 4 )
@@ -172,10 +186,11 @@ void renderfight(struct GameData* data)
 
 	if( data->Player1.iscpu == 0 || data->Player2.iscpu == 0 )
 	{
-		gotoxy( 1, 1 );
-	
-	
+		colourwins( data->Player1.wins, 40, 1, menufader[data->fader] );
+		colourwins( data->Player2.wins, 79, -1, menufader[data->fader] );
+		
 	} else {
+		textcolor(menufader[data->fader]);
 		gotoxy( 1, 1 );
 		printf( "DEMO" );
 		gotoxy( 35, 1 );
@@ -193,7 +208,7 @@ void renderinoverlay(struct GameData* data)
 		gotoxy( 10, 3);
 		printf("%d", countdown);
 		
-		waitframes( 2 );
+		waitframes( 120 );
 		--countdown;
 	}
 	data->GameState = GAMESTATE_FIGHT;
